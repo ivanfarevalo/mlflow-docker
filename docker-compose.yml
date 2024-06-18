@@ -26,7 +26,7 @@ services:
       - POSTGRES_USER=${PG_USER}
       - POSTGRES_PASSWORD=${PG_PASSWORD}
     volumes:
-      - /data/docker/mlflow_db:/var/lib/postgresql/data
+      - mlflow_db_volume:/var/lib/postgresql/data
     networks:
       - internal
   mlflow:
@@ -85,5 +85,5 @@ networks:
   public:
     driver: bridge
 volumes:
-  db_volume:
+  mlflow_db_volume:
   minio_volume:
