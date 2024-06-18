@@ -14,24 +14,23 @@ services:
       - internal
       - public
     volumes:
-      - minio_new_volume:/data
+      - minio_volume:/data
   db:
-    image: mysql:8-oracle # -oracle tag supports arm64 architecture!
+    image: postgres:14
     restart: unless-stopped
     container_name: mlflow_db
     expose:
-      - "3306"
+      - "5432"
     environment:
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - POSTGRES_DB=${PG_DATABASE}
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASSWORD}
     volumes:
-      - db_new_volume:/var/lib/mysql
+      - /data/docker/mlflow_db:/var/lib/postgresql/data
     networks:
       - internal
   mlflow:
-    image: ubuntu/mlflow:2.1.1_1.0-22.04
+    image: bitnami/mlflow:2.14.0
     container_name: tracker_mlflow
     restart: unless-stopped
     ports:
@@ -41,13 +40,14 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_DEFAULT_REGION=${AWS_REGION}
       - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
+      - MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USER}
+      - MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PSWD}
     networks:
       - public
       - internal
-    entrypoint: mlflow server --backend-store-uri mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE} --default-artifact-root s3://${AWS_BUCKET_NAME}/ --artifacts-destination s3://${AWS_BUCKET_NAME}/ -h 0.0.0.0
+    entrypoint: mlflow server --backend-store-uri postgresql://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE} --default-artifact-root s3://${AWS_BUCKET_NAME}/ --artifacts-destination s3://${AWS_BUCKET_NAME}/ -h 0.0.0.0
     depends_on:
-      wait-for-db:
-        condition: service_completed_successfully
+      - "db"
   create_s3_buckets:
     image: minio/mc
     depends_on:
@@ -58,13 +58,6 @@ services:
       /usr/bin/mc mb minio/${AWS_BUCKET_NAME};
       exit 0;
       "
-    networks:
-      - internal
-  wait-for-db:
-    image: atkrad/wait4x
-    depends_on:
-      - db
-    command: tcp db:3306 -t 90s -i 250ms
     networks:
       - internal
   run_test_experiment:
@@ -92,5 +85,5 @@ networks:
   public:
     driver: bridge
 volumes:
-  db_new_volume:
-  minio_new_volume:
+  db_volume:
+  minio_volume:
