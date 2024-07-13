@@ -1,0 +1,2 @@
+# If edited, must reload file on container with docker exec mlflow_backup_service crontab /etc/crontabs/mlflow_backup_cron
+0 3 * * * /scripts/backup_mlflow_data.sh >> /var/log/backup.log 2>&1
